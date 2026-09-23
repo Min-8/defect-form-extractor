@@ -23,7 +23,7 @@ from PySide6.QtWidgets import (
 )
 
 APP_NAME = "3년차 하자접수 PDF → Excel"
-APP_VERSION = "0.1.0"
+APP_VERSION = "0.1.1"
 
 HEADER_ROIS = {
     "dong_ho": (0.040, 0.085, 0.280, 0.125),

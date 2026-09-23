@@ -1,0 +1,70 @@
+name: Build Windows Release
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'app.py'
+      - 'requirements.txt'
+      - '.github/workflows/build-release.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller==6.15.0
+
+      - name: Build portable app
+        shell: pwsh
+        run: |
+          pyinstaller --noconfirm --clean --windowed --name DefectFormExtractor `
+            --collect-all paddleocr `
+            --collect-all paddlex `
+            --collect-all paddle `
+            --collect-all PySide6 `
+            app.py
+
+      - name: Package
+        shell: pwsh
+        run: |
+          Compress-Archive -Path dist/DefectFormExtractor/* -DestinationPath DefectFormExtractor-v0.1.0-windows-x64.zip -Force
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: DefectFormExtractor-v0.1.0-windows-x64
+          path: DefectFormExtractor-v0.1.0-windows-x64.zip
+
+      - name: Create or update v0.1.0 release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = "v0.1.0"
+          git fetch --tags
+          if (-not (git tag -l $tag)) {
+            git tag $tag $env:GITHUB_SHA
+            git push origin $tag
+          }
+          gh release view $tag 2>$null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create $tag --title "v0.1.0 - 첫 공개 버전" --notes "무료 로컬 PaddleOCR 기반 3년차 하자접수 PDF → Excel 변환기입니다. API 키와 유료 서비스가 필요 없습니다."
+          }
+          gh release upload $tag DefectFormExtractor-v0.1.0-windows-x64.zip --clobber

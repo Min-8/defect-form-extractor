@@ -31,6 +31,11 @@ jobs:
           pip install -r requirements.txt
           pip install pyinstaller==6.15.0
 
+      - name: Smoke test PaddleOCR runtime
+        shell: pwsh
+        run: |
+          python -c "import paddle, paddlex, paddleocr; print('paddle', paddle.__version__); print('paddlex', paddlex.__version__); print('paddleocr', paddleocr.__version__); from paddleocr import PaddleOCR; PaddleOCR(lang='korean', use_doc_orientation_classify=False, use_doc_unwarping=False, use_textline_orientation=False); print('PaddleOCR init OK')"
+
       - name: Build portable app
         shell: pwsh
         run: |
@@ -44,20 +49,20 @@ jobs:
       - name: Package
         shell: pwsh
         run: |
-          Compress-Archive -Path dist/DefectFormExtractor/* -DestinationPath DefectFormExtractor-v0.1.0-windows-x64.zip -Force
+          Compress-Archive -Path dist/DefectFormExtractor/* -DestinationPath DefectFormExtractor-v0.1.1-windows-x64.zip -Force
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: DefectFormExtractor-v0.1.0-windows-x64
-          path: DefectFormExtractor-v0.1.0-windows-x64.zip
+          name: DefectFormExtractor-v0.1.1-windows-x64
+          path: DefectFormExtractor-v0.1.1-windows-x64.zip
 
-      - name: Create or update v0.1.0 release
+      - name: Create or update v0.1.1 release
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $tag = "v0.1.0"
+          $tag = "v0.1.1"
           git fetch --tags
           if (-not (git tag -l $tag)) {
             git tag $tag $env:GITHUB_SHA
@@ -65,6 +70,6 @@ jobs:
           }
           gh release view $tag 2>$null
           if ($LASTEXITCODE -ne 0) {
-            gh release create $tag --title "v0.1.0 - 첫 공개 버전" --notes "무료 로컬 PaddleOCR 기반 3년차 하자접수 PDF → Excel 변환기입니다. API 키와 유료 서비스가 필요 없습니다."
+            gh release create $tag --title "v0.1.1 - PaddleOCR 호환성 수정" --notes "PaddleOCR 3.0.3과 PaddleX 3.0.3 버전을 고정하여 Windows 실행 시 PaddlePredictorOption 오류를 수정했습니다. API 키와 유료 서비스는 필요 없습니다."
           }
-          gh release upload $tag DefectFormExtractor-v0.1.0-windows-x64.zip --clobber
+          gh release upload $tag DefectFormExtractor-v0.1.1-windows-x64.zip --clobber

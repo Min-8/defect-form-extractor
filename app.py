@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import sys
 import traceback
@@ -23,7 +24,26 @@ from PySide6.QtWidgets import (
 )
 
 APP_NAME = "3년차 하자접수 PDF → Excel"
-APP_VERSION = "0.1.1"
+APP_VERSION = "0.1.2"
+
+_STDIO_HOLDER = None
+
+def ensure_stdio():
+    """PyInstaller --windowed에서는 stdout/stderr가 None이므로 다운로드 진행 출력이 죽지 않게 파일로 연결한다."""
+    global _STDIO_HOLDER
+    if sys.stdout is not None and sys.stderr is not None:
+        return
+    try:
+        log_dir = Path(os.environ.get("LOCALAPPDATA", str(Path.home()))) / "DefectFormExtractor"
+        log_dir.mkdir(parents=True, exist_ok=True)
+        _STDIO_HOLDER = open(log_dir / "runtime.log", "a", encoding="utf-8", buffering=1)
+    except Exception:
+        _STDIO_HOLDER = open(os.devnull, "w", encoding="utf-8")
+    if sys.stdout is None:
+        sys.stdout = _STDIO_HOLDER
+    if sys.stderr is None:
+        sys.stderr = _STDIO_HOLDER
+
 
 HEADER_ROIS = {
     "dong_ho": (0.040, 0.085, 0.280, 0.125),
@@ -106,6 +126,7 @@ class OCREngine:
     def _load(self):
         if self._ocr is not None:
             return
+        ensure_stdio()
         from paddleocr import PaddleOCR
         self._ocr = PaddleOCR(
             lang="korean",
@@ -504,6 +525,11 @@ class MainWindow(QMainWindow):
 
 
 def main():
+    ensure_stdio()
+    if "--import-test" in sys.argv:
+        from paddleocr import PaddleOCR
+        Path("runtime-smoke-ok.txt").write_text("PaddleOCR import OK", encoding="utf-8")
+        return
     app = QApplication(sys.argv)
     app.setApplicationName(APP_NAME)
     win = MainWindow(); win.show()

@@ -46,23 +46,32 @@ jobs:
             --collect-all PySide6 `
             app.py
 
+      - name: Smoke test packaged windowed EXE
+        shell: pwsh
+        run: |
+          Remove-Item runtime-smoke-ok.txt -ErrorAction SilentlyContinue
+          $p = Start-Process -FilePath "dist/DefectFormExtractor/DefectFormExtractor.exe" -ArgumentList "--import-test" -PassThru -Wait
+          if ($p.ExitCode -ne 0) { throw "Packaged EXE import test failed with exit code $($p.ExitCode)" }
+          if (-not (Test-Path runtime-smoke-ok.txt)) { throw "Packaged EXE did not create runtime-smoke-ok.txt" }
+          Get-Content runtime-smoke-ok.txt
+
       - name: Package
         shell: pwsh
         run: |
-          Compress-Archive -Path dist/DefectFormExtractor/* -DestinationPath DefectFormExtractor-v0.1.1-windows-x64.zip -Force
+          Compress-Archive -Path dist/DefectFormExtractor/* -DestinationPath DefectFormExtractor-v0.1.2-windows-x64.zip -Force
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: DefectFormExtractor-v0.1.1-windows-x64
-          path: DefectFormExtractor-v0.1.1-windows-x64.zip
+          name: DefectFormExtractor-v0.1.2-windows-x64
+          path: DefectFormExtractor-v0.1.2-windows-x64.zip
 
-      - name: Create or update v0.1.1 release
+      - name: Create or update v0.1.2 release
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $tag = "v0.1.1"
+          $tag = "v0.1.2"
           git fetch --tags
           if (-not (git tag -l $tag)) {
             git tag $tag $env:GITHUB_SHA
@@ -70,6 +79,6 @@ jobs:
           }
           gh release view $tag 2>$null
           if ($LASTEXITCODE -ne 0) {
-            gh release create $tag --title "v0.1.1 - PaddleOCR 호환성 수정" --notes "PaddleOCR 3.0.3과 PaddleX 3.0.3 버전을 고정하여 Windows 실행 시 PaddlePredictorOption 오류를 수정했습니다. API 키와 유료 서비스는 필요 없습니다."
+            gh release create $tag --title "v0.1.2 - Windows GUI 런타임 수정" --notes "PyInstaller windowed 모드에서 sys.stderr가 None이 되어 PaddleX 폰트/모델 다운로드가 중단되던 문제를 수정했습니다. 빌드된 EXE 자체의 PaddleOCR import smoke test를 추가했습니다. API 키와 유료 서비스는 필요 없습니다."
           }
-          gh release upload $tag DefectFormExtractor-v0.1.1-windows-x64.zip --clobber
+          gh release upload $tag DefectFormExtractor-v0.1.2-windows-x64.zip --clobber
